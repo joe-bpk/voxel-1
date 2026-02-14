@@ -5,6 +5,25 @@ pub const WORLDHEIGHT: usize = 64;
 pub const WORLDSIZE_CHUNK: usize = 4;
 pub const WORLDSIZE_BLOCKS: usize = WORLDSIZE_CHUNK * CHUNKSIZE;
 
+pub struct PlayerInfo {
+    pub loc: Vector3,
+    pub render_distance: usize
+}
+
+impl PlayerInfo {
+    pub fn get_chunk_loc(&self) -> IntVec3
+    {
+        let self_loc_x = self.loc.x - (self.loc.x % 32.0);
+        let self_loc_y = 0.0;
+        let self_loc_z = self.loc.z - (self.loc.z % 32.0);
+        return IntVec3 {
+            x: self_loc_x as i32 / CHUNKSIZE as i32,
+            y: self_loc_y as i32 / CHUNKSIZE as i32,
+            z: self_loc_z as i32 / CHUNKSIZE as i32,
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct IntVec3
 {
@@ -43,10 +62,11 @@ impl ChunkLoc
     pub fn toWorldLoc(self) -> IntVec3
     {
         let chunk_size = CHUNKSIZE as i32;
+        // FIX: Used to use self.loc.x for y and z as well
         return IntVec3 {
             x: self.loc.x * chunk_size,
-            y: self.loc.x * chunk_size,
-            z: self.loc.x * chunk_size,
+            y: self.loc.y * chunk_size,
+            z: self.loc.z * chunk_size,
         };
     }
 }

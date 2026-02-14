@@ -1,5 +1,5 @@
-mod terrain;
-mod utils;
+pub mod terrain;
+pub mod utils;
 
 use terrain::Terrain;
 

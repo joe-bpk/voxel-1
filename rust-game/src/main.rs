@@ -1,7 +1,6 @@
 mod display;
 mod level;
 
-
 fn main()
 {
     let mut display = display::Display::new();

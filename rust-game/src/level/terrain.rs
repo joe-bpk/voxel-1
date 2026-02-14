@@ -1,29 +1,27 @@
 use crate::level::utils::*;
 use noiselib::*;
-use raylib::prelude::*;
+
+// Removed Raylib drawing imports, keeping only basic types if needed
+// strictly for generation, though usually we'd remove raylib here entirely.
 
 #[derive(Copy, Clone)]
-struct Block
+pub struct Block
 {
-    block_id: usize,
-    health:   i32,
+    pub block_id: usize,
+    pub health:   i32,
 }
 
+// Block logic only (no drawing)
 impl Block
 {
-    pub fn draw(self, d: &mut RaylibMode3D<RaylibDrawHandle>, loc: Vector3)
-    {
-        if self.block_id == 1 {
-            d.draw_cube(loc, 1.0, 1.0, 1.0, Color::BLUE);
-            d.draw_cube_wires(loc, 1.0, 1.0, 1.0, Color::BLACK);
-        }
-    }
+    // Any logic regarding block health/interaction would go here
 }
 
+#[derive(Clone)]
 pub struct Chunk
 {
-    chunk_loc: ChunkLoc,
-    blocks:    Box<[[[Block; CHUNKSIZE]; WORLDHEIGHT]; CHUNKSIZE]>,
+    pub chunk_loc: ChunkLoc,
+    pub blocks:    Box<[[[Block; CHUNKSIZE]; WORLDHEIGHT]; CHUNKSIZE]>,
 }
 
 impl Chunk
@@ -45,21 +43,20 @@ impl Chunk
 
     pub fn perlinify(&mut self)
     {
-        let mut seed = 10;
-
+        let seed = 10;
         let mut rng = noiselib::prelude::UniformRandomGen::new(seed);
 
         for x in 0..CHUNKSIZE {
             for y in 0..WORLDHEIGHT {
                 for z in 0..CHUNKSIZE {
-                    let mut perlin_out = perlin::perlin_noise_2d(
+                    let perlin_out = perlin::perlin_noise_2d(
                         &mut rng,
                         (x as f32 / WORLDSIZE_BLOCKS as f32),
                         (z as f32 / WORLDSIZE_BLOCKS as f32),
                         seed,
                     );
 
-                    let mut block_id = 1;
+                    let block_id;
 
                     if (perlin_out + 0.5) * WORLDHEIGHT as f32 > y as f32 {
                         block_id = 1;
@@ -71,28 +68,11 @@ impl Chunk
             }
         }
     }
-
-    pub fn draw(&self, d: &mut RaylibMode3D<RaylibDrawHandle>)
-    {
-        let mut locRlVec3 = self.chunk_loc.toWorldLoc().toRLVec3();
-        for x in 0..CHUNKSIZE {
-            for y in 0..WORLDHEIGHT {
-                for z in 0..CHUNKSIZE {
-                    let mut relLoc = Vector3::new(x as f32, y as f32, z as f32);
-
-                    let mut actualLoc = locRlVec3 + relLoc;
-
-                    self.blocks[x][y][z].draw(d, actualLoc);
-                }
-            }
-        }
-        d.draw_grid(50, 1.0);
-    }
 }
 
 pub struct Terrain
 {
-    chunks: Box<[[Chunk; WORLDSIZE_CHUNK]; WORLDSIZE_CHUNK]>,
+    pub chunks: Box<[[Chunk; WORLDSIZE_CHUNK]; WORLDSIZE_CHUNK]>,
 }
 
 impl Terrain
@@ -119,6 +99,7 @@ impl Terrain
             chunks: chunks
         };
     }
+
     pub fn perlinify(&mut self)
     {
         for x in 0..WORLDSIZE_CHUNK {
@@ -128,12 +109,14 @@ impl Terrain
         }
     }
 
-    pub fn draw(&self, d: &mut RaylibMode3D<RaylibDrawHandle>)
-    {
+    // Logic to get relevant data, but NOT draw it
+    pub fn get_loaded_chunks(&self) -> Vec<&Chunk> {
+        let mut loaded = Vec::new();
         for x in 0..WORLDSIZE_CHUNK {
             for z in 0..WORLDSIZE_CHUNK {
-                self.chunks[x][z].draw(d);
+                loaded.push(&self.chunks[x][z]);
             }
         }
+        loaded
     }
 }

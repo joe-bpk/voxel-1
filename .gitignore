@@ -1,1 +1,2 @@
-rust-game/target/*
+target/*
+temp.txt
