@@ -2,8 +2,11 @@ use raylib::prelude::*;
 
 pub const CHUNKSIZE: usize = 32;
 pub const WORLDHEIGHT: usize = 64;
-pub const WORLDSIZE_CHUNK: usize = 4;
+pub const WORLDHEIGHTF32: f32 = WORLDHEIGHT as f32;
+pub const WORLDSIZE_CHUNK_REL: usize = 8;
+pub const WORLDSIZE_CHUNK: usize = WORLDSIZE_CHUNK_REL * 2;
 pub const WORLDSIZE_BLOCKS: usize = WORLDSIZE_CHUNK * CHUNKSIZE;
+
 
 pub struct PlayerInfo {
     pub loc: Vector3,

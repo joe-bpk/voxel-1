@@ -49,16 +49,19 @@ impl Chunk
         for x in 0..CHUNKSIZE {
             for y in 0..WORLDHEIGHT {
                 for z in 0..CHUNKSIZE {
-                    let perlin_out = perlin::perlin_noise_2d(
+                    let mut offset = self.chunk_loc.toWorldLoc().toRLVec3();
+                    let perlin_out = musgrave::musgrave_noise_2d(
                         &mut rng,
-                        (x as f32 / WORLDSIZE_BLOCKS as f32),
-                        (z as f32 / WORLDSIZE_BLOCKS as f32),
+                        ((x as f32 + offset.x) / WORLDSIZE_BLOCKS as f32),
+                        ((z as f32 + offset.z) / WORLDSIZE_BLOCKS as f32),
                         seed,
                     );
 
                     let block_id;
 
-                    if (perlin_out + 0.5) * WORLDHEIGHT as f32 > y as f32 {
+                    let mut perlin_out_normal = (perlin_out + 1.0)/2.0;
+
+                    if (perlin_out_normal*WORLDHEIGHTF32) > y as f32 {
                         block_id = 1;
                     } else {
                         block_id = 0;
@@ -88,9 +91,9 @@ impl Terrain
         for x in 0..WORLDSIZE_CHUNK {
             for z in 0..WORLDSIZE_CHUNK {
                 chunks[x][z].chunk_loc.loc = IntVec3 {
-                    x: x as i32,
+                    x: (x as i32 - WORLDSIZE_CHUNK_REL as i32),
                     y: 0,
-                    z: z as i32,
+                    z: (z as i32 - WORLDSIZE_CHUNK_REL as i32),
                 };
             }
         }
