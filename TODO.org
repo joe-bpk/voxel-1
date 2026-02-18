@@ -13,6 +13,7 @@
 *** TODO Chunk streaming / unload distant chunks
 ** BUGS
 *** TODO Fog doesn't account for camera height or player position
-*** TODO seg fault on exiting
+*** DONE seg fault on exiting
 Rewrote unsafe blocks in c.
 found out it is actually just an ordering issue with the struct because rust unloads them from top to bottom
+*** DONE chunk loading mess
