@@ -25,6 +25,7 @@ impl Display
     pub fn new() -> Self
     {
         let (mut rl, thread) = raylib::init().build();
+        rl.set_window_size(1600, 900);
         let cam = Camera3D::perspective(
             Vector3 {
                 x: -10.0,

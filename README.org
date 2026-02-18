@@ -1,4 +1,5 @@
-#+title: Readme
+#+title: Voxel-1
 
-
-
+#+CAPTION: Demo animation
+#+ATTR_HTML: :width 400 :alt "Animated GIF"
+[[file:sample_1.gif]]
