@@ -1,4 +1,4 @@
-mod mesh_gen;
+pub mod mesh_gen;
 
 use crate::display::mesh::mesh_gen::*;
 use crate::level::terrain::Chunk;
@@ -16,17 +16,14 @@ pub struct ChunkMesh
 {
     pub mesh:      Mesh,
     pub mat:       WeakMaterial,
-    pub is_loaded: bool,
     pub position:  Vector3,
     pub chunk_loc: ChunkLoc,
 }
 
-pub const FFI_RED: raylib::ffi::Color = raylib::ffi::Color {
-    r: 255,
-    g: 0,
-    b: 0,
-    a: 255,
-};
+pub const FFI_RED: raylib::ffi::Color =
+    raylib::ffi::Color {
+        r: 255, g: 0, b: 0, a: 255
+    };
 
 impl ChunkMesh
 {
@@ -34,14 +31,14 @@ impl ChunkMesh
         rl: &mut RaylibHandle,
         thread: &RaylibThread,
         chunk: &Chunk,
+        neighbors: &ChunkNeighbors,
         shader: &Shader,
         color: raylib::ffi::Color,
     ) -> Self
     {
         return Self {
-            mesh:      generate_chunk_mesh(chunk, thread),
+            mesh:      generate_chunk_mesh(chunk, neighbors, thread),
             mat:       Self::color_to_material(rl, thread, shader, color),
-            is_loaded: true,
             position:  chunk.chunk_loc.to_world_loc().to_rl_vec3(),
             chunk_loc: chunk.chunk_loc,
         };
@@ -50,11 +47,12 @@ impl ChunkMesh
     pub fn draw(&self, d: &mut RaylibMode3D<RaylibDrawHandle>)
     {
         let mat = self.mat.clone();
-        let mut matrix = Matrix::translate(
-            self.position.x,
-            self.position.y,
-            self.position.z,
+
+        // removed unused mut
+        let matrix = Matrix::translate(
+            self.position.x, self.position.y, self.position.z,
         );
+
         d.draw_mesh(&self.mesh, mat, matrix);
     }
 
@@ -67,7 +65,8 @@ impl ChunkMesh
     {
         let mut material = rl.load_material_default(thread);
 
-        // raylib-rs Shaders and Materials can be dereferenced to their FFI structs
+        // raylib-rs shaders and materials can be dereferenced to their ffi
+        // structs
         use std::ops::Deref;
         unsafe {
             let mat_ptr: *mut raylib::ffi::Material = material.as_mut();

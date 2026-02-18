@@ -2,6 +2,16 @@ use crate::level::terrain::Chunk;
 use crate::level::utils::*;
 use raylib::prelude::*; // mesh comes from here now
 
+/// holds references to the 4 cardinal neighbor chunks.
+/// used to check for solid blocks across chunk boundaries.
+pub struct ChunkNeighbors<'a>
+{
+    pub pos_x: Option<&'a Chunk>,
+    pub neg_x: Option<&'a Chunk>,
+    pub pos_z: Option<&'a Chunk>,
+    pub neg_z: Option<&'a Chunk>,
+}
+
 unsafe extern "C" {
     /// # category
     /// **server side**
@@ -101,7 +111,11 @@ const QUAD_TEXCOORDS: [f32; 12] = [
 /// this function calls `GenerateVoxelMesh` via ffi. it assumes the c-side
 /// implementation correctly handles the provided pointers before they are
 /// dropped by rust at the end of this scope.
-pub fn generate_chunk_mesh(chunk: &Chunk, _thread: &RaylibThread) -> Mesh
+pub fn generate_chunk_mesh(
+    chunk: &Chunk,
+    neighbors: &ChunkNeighbors,
+    _thread: &RaylibThread,
+) -> Mesh
 {
     let mut vertices: Vec<f32> = Vec::new();
     let mut normals: Vec<f32> = Vec::new();
@@ -123,7 +137,7 @@ pub fn generate_chunk_mesh(chunk: &Chunk, _thread: &RaylibThread) -> Mesh
                 // iterate over all 6 directions defined in the table
                 for (dir, normal, v_offsets) in &FACE_DATA {
                     if should_render_face(
-                        chunk, x, y, z, dir[0], dir[1], dir[2],
+                        chunk, neighbors, x, y, z, dir[0], dir[1], dir[2],
                     ) {
                         // push vertices for this face
                         // we iterate 0..6 because each face has 6 vertices (2
@@ -166,6 +180,7 @@ pub fn generate_chunk_mesh(chunk: &Chunk, _thread: &RaylibThread) -> Mesh
 /// check if a face should be rendered (is it exposed to air?)
 fn should_render_face(
     chunk: &Chunk,
+    neighbors: &ChunkNeighbors,
     x: usize,
     y: usize,
     z: usize,
@@ -178,17 +193,41 @@ fn should_render_face(
     let ny = y as i32 + dy;
     let nz = z as i32 + dz;
 
-    // check bounds
-    if nx < 0
-        || nx >= CHUNKSIZE as i32
-        || ny < 0
-        || ny >= WORLDHEIGHT as i32
-        || nz < 0
-        || nz >= CHUNKSIZE as i32
+    // in-bounds: check this chunk
+    if nx >= 0
+        && nx < CHUNKSIZE as i32
+        && ny >= 0
+        && ny < WORLDHEIGHT as i32
+        && nz >= 0
+        && nz < CHUNKSIZE as i32
     {
-        return true; // render faces at chunk boundaries
+        return chunk.blocks[nx as usize][ny as usize][nz as usize].block_id
+            == 0;
     }
 
-    // check if neighbor is air
-    chunk.blocks[nx as usize][ny as usize][nz as usize].block_id == 0
+    // out-of-bounds: check the neighboring chunk if available
+    // note: vertical bounds (ny) are world limits, not chunk limits
+    if ny < 0 || ny >= WORLDHEIGHT as i32 {
+        return true; // always render top/bottom of world
+    }
+
+    let (neighbor, local_x, local_z) = if nx < 0 {
+        (neighbors.neg_x.as_ref(), CHUNKSIZE as i32 - 1, nz)
+    } else if nx >= CHUNKSIZE as i32 {
+        (neighbors.pos_x.as_ref(), 0, nz)
+    } else if nz < 0 {
+        (neighbors.neg_z.as_ref(), nx, CHUNKSIZE as i32 - 1)
+    } else if nz >= CHUNKSIZE as i32 {
+        (neighbors.pos_z.as_ref(), nx, 0)
+    } else {
+        return true; // should be unreachable given in-bounds check above
+    };
+
+    match neighbor {
+        Some(n) => {
+            n.blocks[local_x as usize][ny as usize][local_z as usize].block_id
+                == 0
+        }
+        None => true, // neighbor not loaded yet, render the face to be safe
+    }
 }

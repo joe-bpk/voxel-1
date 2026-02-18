@@ -1,4 +1,4 @@
-use crate::level::terrain::{Block, Chunk};
+use crate::level::terrain::Chunk;
 use crate::level::utils::{CHUNKSIZE, ChunkLoc, WORLDHEIGHT, WORLDHEIGHTF32};
 
 use raylib::prelude::*;
@@ -6,24 +6,22 @@ use raylib::prelude::*;
 pub mod mesh;
 
 use crate::display::mesh::*;
+use crate::display::mesh_gen::ChunkNeighbors;
 
 pub const RENDER_DISTANCE: usize = 8;
 pub const REND_DIST_BLOCKS: usize = RENDER_DISTANCE * CHUNKSIZE;
 
-/// A Display struct for client side rendering
-pub struct Display
-{
+/// a display struct for client side rendering
+pub struct Display {
     chunk_meshes: Vec<ChunkMesh>,
-    shader:       Shader,
-    pub rl:       RaylibHandle,
-    thread:       RaylibThread,
-    pub cam:      Camera3D,
+    shader: Shader,
+    pub rl: RaylibHandle,
+    thread: RaylibThread,
+    pub cam: Camera3D,
 }
 
-impl Display
-{
-    pub fn new() -> Self
-    {
+impl Display {
+    pub fn new() -> Self {
         let (mut rl, thread) = raylib::init().build();
         rl.set_window_size(1600, 900);
         let cam = Camera3D::perspective(
@@ -60,14 +58,23 @@ impl Display
         };
     }
 
-    // --- RENDER LOGIC START ---
+    // --- render logic start ---
 
-    pub fn load_chunk(&mut self, chunk: &Chunk)
-    {
+    pub fn load_chunk(&mut self, chunk: &Chunk, neighbors: &ChunkNeighbors) {
+        // remove existing mesh if present to allow for refreshes
+        if let Some(idx) = self
+            .chunk_meshes
+            .iter()
+            .position(|m| m.chunk_loc.compare(chunk.chunk_loc))
+        {
+            self.chunk_meshes.remove(idx);
+        }
+
         self.chunk_meshes.push(ChunkMesh::gen_from_chunk(
             &mut self.rl,
             &self.thread,
             chunk,
+            neighbors,
             &self.shader,
             FFI_RED,
         ))
@@ -77,8 +84,7 @@ impl Display
         cam: &Camera3D,
         d: &mut RaylibMode3D<RaylibDrawHandle>,
         meshes: &[ChunkMesh],
-    )
-    {
+    ) {
         for chunk in meshes {
             if Self::is_chunk_visible(cam, chunk.position) {
                 chunk.draw(d);
@@ -86,8 +92,7 @@ impl Display
         }
     }
 
-    fn is_chunk_visible(cam: &Camera3D, chunk_pos: Vector3) -> bool
-    {
+    fn is_chunk_visible(cam: &Camera3D, chunk_pos: Vector3) -> bool {
         let chunk_size = CHUNKSIZE as f32;
         let chunk_center = Vector3::new(
             chunk_pos.x + chunk_size / 2.0,
@@ -95,20 +100,19 @@ impl Display
             chunk_pos.z + chunk_size / 2.0,
         );
 
-        // Distance culling
+        // distance culling
         let distance = (chunk_center - cam.position).length();
         if distance > REND_DIST_BLOCKS as f32 {
             return false;
         }
 
-        // View direction culling
+        // view direction culling
         let to_chunk = (chunk_center - cam.position).normalized();
         let cam_forward = (cam.target - cam.position).normalized();
-        to_chunk.dot(cam_forward) > -0.2 // Don't render behind camera
+        to_chunk.dot(cam_forward) > -0.2 // don't render behind camera
     }
 
-    pub fn is_chunk_loaded(&self, chunk_pos: ChunkLoc) -> bool
-    {
+    pub fn is_chunk_loaded(&self, chunk_pos: ChunkLoc) -> bool {
         for chunk in &self.chunk_meshes {
             if chunk.chunk_loc.compare(chunk_pos) {
                 return true;
@@ -118,10 +122,9 @@ impl Display
         return false;
     }
 
-    // --- RENDER LOGIC END ---
+    // --- render logic end ---
 
-    pub fn draw_loop(&mut self)
-    {
+    pub fn draw_loop(&mut self) {
         self.rl
             .update_camera(&mut self.cam, CameraMode::CAMERA_FREE);
         let mut d = self.rl.begin_drawing(&self.thread);

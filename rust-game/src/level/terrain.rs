@@ -8,7 +8,6 @@ use noiselib::*;
 #[derive(Copy, Clone)]
 pub struct Block {
     pub block_id: usize,
-    pub health: i32,
 }
 
 impl Block {}
@@ -32,7 +31,6 @@ impl Chunk {
             },
             blocks: Box::new(
                 [[[Block {
-                    health: 100,
                     block_id: 1,
                 }; CHUNKSIZE]; WORLDHEIGHT]; CHUNKSIZE],
             ),
@@ -50,8 +48,8 @@ impl Chunk {
                     let offset = self.chunk_loc.to_world_loc().to_rl_vec3();
                     let perlin_out = musgrave::musgrave_noise_2d(
                         &mut rng,
-                        ((x as f32 + offset.x) / WORLDSIZE_BLOCKS as f32),
-                        ((z as f32 + offset.z) / WORLDSIZE_BLOCKS as f32),
+                        (x as f32 + offset.x) / WORLDSIZE_BLOCKS as f32,
+                        (z as f32 + offset.z) / WORLDSIZE_BLOCKS as f32,
                         seed,
                     );
 
