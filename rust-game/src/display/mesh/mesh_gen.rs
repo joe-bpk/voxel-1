@@ -1,9 +1,37 @@
 use crate::level::terrain::Chunk;
 use crate::level::utils::*;
-use raylib::prelude::*;
+use raylib::prelude::*; // mesh comes from here now
 
-pub fn generate_chunk_mesh(chunk: &Chunk, thread: &RaylibThread) -> Mesh
-{
+unsafe extern "C" {
+    /// # category
+    /// **server side**
+    ///
+    /// ffi call to the c-based voxel generator.
+    ///
+    /// this function takes raw vertex data and returns a raylib ffi mesh.
+    fn GenerateVoxelMesh(
+        vertices: *mut f32,
+        normals: *mut f32,
+        texcoords: *mut f32,
+        vertexCount: i32,
+    ) -> raylib::ffi::Mesh; // fully qualified, no import needed
+}
+
+/// # category
+/// **client side processing**
+///
+/// generates a raylib-compatible [`Mesh`] from a [`Chunk`].
+///
+/// this function iterates through every block in a chunk, performs hidden-surface
+/// removal (culling faces that touch other blocks), and uploads the resulting
+/// geometry to the gpu.
+///
+/// # safety
+///
+/// this function calls `GenerateVoxelMesh` via ffi. it assumes the c-side
+/// implementation correctly handles the provided pointers before they are dropped
+/// by rust at the end of this scope.
+pub fn generate_chunk_mesh(chunk: &Chunk, _thread: &RaylibThread) -> Mesh {
     let mut vertices: Vec<f32> = Vec::new();
     let mut normals: Vec<f32> = Vec::new();
     let mut texcoords: Vec<f32> = Vec::new();
@@ -13,7 +41,6 @@ pub fn generate_chunk_mesh(chunk: &Chunk, thread: &RaylibThread) -> Mesh
             for z in 0..CHUNKSIZE {
                 let block = &chunk.blocks[x][y][z];
 
-                // Skip air blocks
                 if block.block_id == 0 {
                     continue;
                 }
@@ -22,7 +49,6 @@ pub fn generate_chunk_mesh(chunk: &Chunk, thread: &RaylibThread) -> Mesh
                 let world_y = y as f32;
                 let world_z = z as f32;
 
-                // Check each face and add if exposed
                 if should_render_face(chunk, x, y, z, 0, 0, 1) {
                     add_front_face(
                         &mut vertices,
@@ -88,52 +114,21 @@ pub fn generate_chunk_mesh(chunk: &Chunk, thread: &RaylibThread) -> Mesh
     }
 
     let vertex_count = (vertices.len() / 3) as i32;
-    let triangle_count = vertex_count / 3;
-
-    // FIX: Use Mesh::default() or a zero-initialized Mesh instead of gen_mesh_poly
-    let mut mesh: Mesh = unsafe { std::mem::zeroed() };
 
     unsafe {
-        // No need to free(mesh.vertices) here because Mesh::default()
-        // initializes pointers to null.
-
-        // Allocate new data
-        mesh.vertices =
-            libc::malloc(vertices.len() * std::mem::size_of::<f32>())
-                as *mut f32;
-        std::ptr::copy_nonoverlapping(
-            vertices.as_ptr(),
-            mesh.vertices,
-            vertices.len(),
+        let ffi_mesh = GenerateVoxelMesh(
+            vertices.as_mut_ptr(),
+            normals.as_mut_ptr(),
+            texcoords.as_mut_ptr(),
+            vertex_count,
         );
 
-        mesh.normals = libc::malloc(normals.len() * std::mem::size_of::<f32>())
-            as *mut f32;
-        std::ptr::copy_nonoverlapping(
-            normals.as_ptr(),
-            mesh.normals,
-            normals.len(),
-        );
-
-        mesh.texcoords =
-            libc::malloc(texcoords.len() * std::mem::size_of::<f32>())
-                as *mut f32;
-        std::ptr::copy_nonoverlapping(
-            texcoords.as_ptr(),
-            mesh.texcoords,
-            texcoords.len(),
-        );
-
-        mesh.vertexCount = vertex_count;
-        mesh.triangleCount = triangle_count;
-
-        mesh.upload(false); // This sends the CPU data to the GPU
+        // the vecs are dropped here — safe because c already memcpy'd them
+        std::mem::transmute(ffi_mesh)
     }
-
-    mesh
 }
 
-/// Check if a face should be rendered (is it exposed to air?)
+/// check if a face should be rendered (is it exposed to air?)
 fn should_render_face(
     chunk: &Chunk,
     x: usize,
@@ -142,13 +137,12 @@ fn should_render_face(
     dx: i32,
     dy: i32,
     dz: i32,
-) -> bool
-{
+) -> bool {
     let nx = x as i32 + dx;
     let ny = y as i32 + dy;
     let nz = z as i32 + dz;
 
-    // Check bounds
+    // check bounds
     if nx < 0
         || nx >= CHUNKSIZE as i32
         || ny < 0
@@ -156,13 +150,14 @@ fn should_render_face(
         || nz < 0
         || nz >= CHUNKSIZE as i32
     {
-        return true; // Render faces at chunk boundaries
+        return true; // render faces at chunk boundaries
     }
 
-    // Check if neighbor is air
+    // check if neighbor is air
     chunk.blocks[nx as usize][ny as usize][nz as usize].block_id == 0
 }
 
+/// adds vertices, normals, and uvs for a front-facing quad (+z).
 fn add_front_face(
     vertices: &mut Vec<f32>,
     normals: &mut Vec<f32>,
@@ -170,8 +165,7 @@ fn add_front_face(
     x: f32,
     y: f32,
     z: f32,
-)
-{
+) {
     vertices.extend_from_slice(&[
         x,
         y,
@@ -203,6 +197,7 @@ fn add_front_face(
     ]);
 }
 
+/// adds vertices, normals, and uvs for a back-facing quad (-z).
 fn add_back_face(
     vertices: &mut Vec<f32>,
     normals: &mut Vec<f32>,
@@ -210,8 +205,7 @@ fn add_back_face(
     x: f32,
     y: f32,
     z: f32,
-)
-{
+) {
     vertices.extend_from_slice(&[
         x + 1.0,
         y,
@@ -243,6 +237,7 @@ fn add_back_face(
     ]);
 }
 
+/// adds vertices, normals, and uvs for a top-facing quad (+y).
 fn add_top_face(
     vertices: &mut Vec<f32>,
     normals: &mut Vec<f32>,
@@ -250,8 +245,7 @@ fn add_top_face(
     x: f32,
     y: f32,
     z: f32,
-)
-{
+) {
     vertices.extend_from_slice(&[
         x,
         y + 1.0,
@@ -283,6 +277,7 @@ fn add_top_face(
     ]);
 }
 
+/// adds vertices, normals, and uvs for a bottom-facing quad (-y).
 fn add_bottom_face(
     vertices: &mut Vec<f32>,
     normals: &mut Vec<f32>,
@@ -290,8 +285,7 @@ fn add_bottom_face(
     x: f32,
     y: f32,
     z: f32,
-)
-{
+) {
     vertices.extend_from_slice(&[
         x,
         y,
@@ -323,6 +317,7 @@ fn add_bottom_face(
     ]);
 }
 
+/// adds vertices, normals, and uvs for a right-facing quad (+x).
 fn add_right_face(
     vertices: &mut Vec<f32>,
     normals: &mut Vec<f32>,
@@ -330,8 +325,7 @@ fn add_right_face(
     x: f32,
     y: f32,
     z: f32,
-)
-{
+) {
     vertices.extend_from_slice(&[
         x + 1.0,
         y,
@@ -363,6 +357,7 @@ fn add_right_face(
     ]);
 }
 
+/// adds vertices, normals, and uvs for a left-facing quad (-x).
 fn add_left_face(
     vertices: &mut Vec<f32>,
     normals: &mut Vec<f32>,
@@ -370,8 +365,7 @@ fn add_left_face(
     x: f32,
     y: f32,
     z: f32,
-)
-{
+) {
     vertices.extend_from_slice(&[
         x,
         y,

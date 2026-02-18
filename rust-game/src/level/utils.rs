@@ -7,27 +7,7 @@ pub const WORLDSIZE_CHUNK_REL: usize = 8;
 pub const WORLDSIZE_CHUNK: usize = WORLDSIZE_CHUNK_REL * 2;
 pub const WORLDSIZE_BLOCKS: usize = WORLDSIZE_CHUNK * CHUNKSIZE;
 
-
-pub struct PlayerInfo {
-    pub loc: Vector3,
-    pub render_distance: usize
-}
-
-impl PlayerInfo {
-    pub fn get_chunk_loc(&self) -> IntVec3
-    {
-        let self_loc_x = self.loc.x - (self.loc.x % 32.0);
-        let self_loc_y = 0.0;
-        let self_loc_z = self.loc.z - (self.loc.z % 32.0);
-        return IntVec3 {
-            x: self_loc_x as i32 / CHUNKSIZE as i32,
-            y: self_loc_y as i32 / CHUNKSIZE as i32,
-            z: self_loc_z as i32 / CHUNKSIZE as i32,
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntVec3
 {
     pub x: i32,
@@ -37,7 +17,7 @@ pub struct IntVec3
 
 impl IntVec3
 {
-    pub fn toRLVec3(self) -> Vector3
+    pub fn to_rl_vec3(self) -> Vector3
     {
         return Vector3 {
             x: self.x as f32,
@@ -54,7 +34,7 @@ impl IntVec3
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChunkLoc
 {
     pub loc: IntVec3,
@@ -62,14 +42,35 @@ pub struct ChunkLoc
 
 impl ChunkLoc
 {
-    pub fn toWorldLoc(self) -> IntVec3
+    pub fn from_world_loc_rl_vec(vec: Vector3) -> Self
+    {
+        let chunk_size = CHUNKSIZE as f32;
+
+        Self {
+            loc: IntVec3 {
+                x: (vec.x / chunk_size).floor() as i32,
+                y: (vec.y / chunk_size).floor() as i32,
+                z: (vec.z / chunk_size).floor() as i32,
+            },
+        }
+    }
+
+    pub fn to_world_loc(self) -> IntVec3
     {
         let chunk_size = CHUNKSIZE as i32;
-        // FIX: Used to use self.loc.x for y and z as well
         return IntVec3 {
             x: self.loc.x * chunk_size,
             y: self.loc.y * chunk_size,
             z: self.loc.z * chunk_size,
         };
+    }
+
+    pub fn compare(&self, other: ChunkLoc) -> bool
+    {
+        if self.loc.x == other.loc.x && self.loc.z == other.loc.z {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

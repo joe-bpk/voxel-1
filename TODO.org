@@ -1,0 +1,18 @@
+#+title: Todo
+
+* PROJ voxel-1
+** TODO Milestones
+*** TODO Basic playable world
+**** DONE Chunk mesh rendering
+**** DONE Terrain generation
+**** TODO Player collision
+**** TODO Inventory system
+*** TODO Infinite world with not whole world loaded at once
+** BACKLOG
+*** TODO Ambient occlusion on meshes
+*** TODO Chunk streaming / unload distant chunks
+** BUGS
+*** TODO Fog doesn't account for camera height or player position
+*** TODO seg fault on exiting
+Rewrote unsafe blocks in c.
+found out it is actually just an ordering issue with the struct because rust unloads them from top to bottom

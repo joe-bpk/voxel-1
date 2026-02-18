@@ -5,12 +5,20 @@ use crate::level::terrain::Chunk;
 use crate::level::utils::*;
 use raylib::prelude::*;
 
+/// # category
+/// **client side rendering**
+///
+/// a representation of a terrain chunk's visual data in the gpu.
+///
+/// `chunkmesh` acts as the bridge between raw voxel data and raylib's
+/// rendering system, storing the compiled mesh and its associated material.
 pub struct ChunkMesh
 {
     pub mesh:      Mesh,
     pub mat:       WeakMaterial,
     pub is_loaded: bool,
     pub position:  Vector3,
+    pub chunk_loc: ChunkLoc,
 }
 
 pub const FFI_RED: raylib::ffi::Color = raylib::ffi::Color {
@@ -22,7 +30,7 @@ pub const FFI_RED: raylib::ffi::Color = raylib::ffi::Color {
 
 impl ChunkMesh
 {
-    pub fn genFromChunk(
+    pub fn gen_from_chunk(
         rl: &mut RaylibHandle,
         thread: &RaylibThread,
         chunk: &Chunk,
@@ -34,7 +42,8 @@ impl ChunkMesh
             mesh:      generate_chunk_mesh(chunk, thread),
             mat:       Self::color_to_material(rl, thread, shader, color),
             is_loaded: true,
-            position:  chunk.chunk_loc.toWorldLoc().toRLVec3(),
+            position:  chunk.chunk_loc.to_world_loc().to_rl_vec3(),
+            chunk_loc: chunk.chunk_loc,
         };
     }
 
