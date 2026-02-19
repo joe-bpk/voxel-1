@@ -254,6 +254,7 @@ dependencies = [
  "libc",
  "noiselib",
  "raylib",
+ "terrain-gen",
 ]
 
 [[package]]
@@ -283,6 +284,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "terrain-gen"
+version = "0.1.0"
+dependencies = [
+ "noiselib",
 ]
 
 [[package]]

@@ -6,7 +6,8 @@ use crate::chunk_loader::ChunkWorkerPool;
 use crate::level::terrain::DynTerr;
 use std::sync::{Arc, Mutex};
 
-fn main() {
+fn main()
+{
     // initialize display and frame rate
     let mut display = display::Display::new();
     display.rl.set_target_fps(1000);
@@ -15,11 +16,14 @@ fn main() {
     let terr = Arc::new(Mutex::new(DynTerr::new()));
     let mut pool = ChunkWorkerPool::new(Arc::clone(&terr));
 
+    if !display.rl.window_should_close() {
+        display.draw_loop();
+    }
+
     while !display.rl.window_should_close() {
         pool.queue_missing_chunks(&display);
         pool.apply_ready_chunks(&mut display, &terr);
 
-        // render frame
         display.draw_loop();
     }
 

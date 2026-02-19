@@ -1,0 +1,7 @@
+[package]
+name = "terrain-gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noiselib = "0.2.4"

@@ -2,8 +2,8 @@
 /// **server side**
 ///
 /// build script to compile the c mesh generation backend.
-fn main() {
-    // re-run if the c source changes
+fn main()
+{
     println!("cargo:rerun-if-changed=src/display/mesh/mesh_gen.c");
 
     // compile the c logic for performance-critical mesh generation

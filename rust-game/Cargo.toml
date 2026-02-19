@@ -7,6 +7,7 @@ edition = "2024"
 raylib = "5.5.1"
 noiselib = "0.2.4"
 libc = "0.2.182"
+terrain-gen = { path = "../terrain-gen" }
 
 [build-dependencies]
 cc = "1.0"
