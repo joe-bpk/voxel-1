@@ -95,6 +95,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
+name = "game"
+version = "0.1.0"
+dependencies = [
+ "raylib-wasm",
+]
+
+[[package]]
 name = "glob"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -218,6 +225,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "raylib-wasm"
+version = "0.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71961ae65f4f541183d3b041fff87735425e4849b3c4912be9e8d2aa771d64dd"
+
+[[package]]
 name = "regex"
 version = "1.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -318,6 +331,15 @@ name = "unicode-ident"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "537dd038a89878be9b64dd4bd1b260315c1bb94f4d784956b81e27a088d9a09e"
+
+[[package]]
+name = "wasm-client"
+version = "0.1.0"
+dependencies = [
+ "game",
+ "libloading",
+ "raylib-wasm",
+]
 
 [[package]]
 name = "windows-link"

@@ -1,0 +1,3 @@
+
+[alias]
+run-native = "run --bin rust-game"

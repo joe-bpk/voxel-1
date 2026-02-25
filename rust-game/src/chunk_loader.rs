@@ -1,7 +1,7 @@
 use crate::level::utils::*;
 use crate::{
-    display::{ RENDER_DISTANCE},
     display::Display,
+    display::RENDER_DISTANCE,
     level::terrain::{Chunk, DynTerr},
 };
 
@@ -10,17 +10,22 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
-const NUM_CHUNK_THREADS: usize = 4; // changing this to 1 fixed "lazy" chunk loading issue, where some close chunks were not loading before further ones
+const NUM_CHUNK_THREADS: usize = 4;
+// changing this to 1 fixed "lazy" chunk loading issue, where some close chunks
+// were not loading before further ones
 
-pub struct ChunkWorkerPool {
-    work_tx: mpsc::Sender<Option<ChunkLoc>>,
+pub struct ChunkWorkerPool
+{
+    work_tx:   mpsc::Sender<Option<ChunkLoc>>,
     result_rx: mpsc::Receiver<Chunk>,
-    handles: Vec<thread::JoinHandle<()>>,
-    pending: HashSet<ChunkLoc>,
+    handles:   Vec<thread::JoinHandle<()>>,
+    pending:   HashSet<ChunkLoc>,
 }
 
-impl ChunkWorkerPool {
-    pub fn new(terr: Arc<Mutex<DynTerr>>) -> Self {
+impl ChunkWorkerPool
+{
+    pub fn new(terr: Arc<Mutex<DynTerr>>) -> Self
+    {
         let (work_tx, work_rx) = mpsc::channel::<Option<ChunkLoc>>();
         let (result_tx, result_rx) = mpsc::channel::<Chunk>();
         let work_rx = Arc::new(Mutex::new(work_rx));
@@ -38,7 +43,11 @@ impl ChunkWorkerPool {
                         match job {
                             None => break, // shutdown signal
                             Some(pos) => {
-                                let chunk = terr.lock().unwrap().get_chunk(pos).unwrap();
+                                let chunk = terr
+                                    .lock()
+                                    .unwrap()
+                                    .get_chunk(pos)
+                                    .unwrap();
                                 result_tx.send(chunk).unwrap();
                             }
                         }
@@ -55,37 +64,59 @@ impl ChunkWorkerPool {
         }
     }
 
-    pub fn queue_missing_chunks(&mut self, display: &Display) {
+    pub fn queue_missing_chunks(&mut self, display: &Display)
+    {
+        // get the player position to center the loading rings
+        let player_pos = ChunkLoc::from_world_loc_rl_vec(display.cam.position);
+
         // iterate through distances (rings) starting from 0 (player position)
         for d in 0..RENDER_DISTANCE as i32 {
+            let mut queued_in_this_ring = false;
+
             // iterate over the perimeter of the square at distance d
             for x in -d..=d {
                 for z in -d..=d {
                     // only process the edge of the square to form a "ring"
-                    // this skips the inner squares already processed in previous 'd' iterations
                     if x.abs() != d && z.abs() != d {
                         continue;
                     }
 
                     let pos = ChunkLoc {
-                        loc: IntVec3 { x, y: 0, z },
+                        loc: IntVec3 {
+                            x: player_pos.loc.x + x,
+                            y: 0,
+                            z: player_pos.loc.z + z,
+                        },
                     };
 
-                    if display.is_chunk_loaded(pos) || self.pending.contains(&pos) {
+                    if display.is_chunk_loaded(pos)
+                        || self.pending.contains(&pos)
+                    {
                         continue;
                     }
 
                     self.pending.insert(pos);
                     self.work_tx.send(Some(pos)).unwrap();
-
-                    // optional: return early after queuing a few chunks to keep the frame smooth
-                    // if you queue hundreds at once, it can still cause a slight hitch
+                    queued_in_this_ring = true;
                 }
+            }
+
+            // if we queued any missing chunks in this ring, we stop here for
+            // this frame. this ensures the worker threads focus on
+            // finishing the closest ring before the main loop
+            // starts requesting chunks further away.
+            if queued_in_this_ring {
+                return;
             }
         }
     }
 
-    pub fn apply_ready_chunks(&mut self, display: &mut Display, terr: &Arc<Mutex<DynTerr>>) {
+    pub fn apply_ready_chunks(
+        &mut self,
+        display: &mut Display,
+        terr: &Arc<Mutex<DynTerr>>,
+    )
+    {
         let guard = terr.lock().unwrap();
 
         // non-blocking pull of all finished chunks
@@ -112,20 +143,25 @@ impl ChunkWorkerPool {
             };
             display.load_chunk(&chunk, &neighbors);
 
-            // 2. refresh neighbors to cull their boundary faces against the new chunk
+            // 2. refresh neighbors to cull their boundary faces against the new
+            //    chunk
             let neighbor_offsets = [(1, 0), (-1, 0), (0, 1), (0, -1)];
             for (dx, dz) in neighbor_offsets {
                 if let Some(neighbor_chunk) = get_neighbor(dx, dz) {
                     if display.is_chunk_loaded(neighbor_chunk.chunk_loc) {
                         let n_pos = neighbor_chunk.chunk_loc.loc;
-                        let get_n_neighbor = |ndx: i32, ndz: i32| -> Option<&Chunk> {
-                            let target = IntVec3 {
-                                x: n_pos.x + ndx,
-                                y: 0,
-                                z: n_pos.z + ndz,
+                        let get_n_neighbor =
+                            |ndx: i32, ndz: i32| -> Option<&Chunk> {
+                                let target = IntVec3 {
+                                    x: n_pos.x + ndx,
+                                    y: 0,
+                                    z: n_pos.z + ndz,
+                                };
+                                guard
+                                    .chunks
+                                    .iter()
+                                    .find(|c| c.chunk_loc.loc == target)
                             };
-                            guard.chunks.iter().find(|c| c.chunk_loc.loc == target)
-                        };
 
                         let n_neighbors = ChunkNeighbors {
                             pos_x: get_n_neighbor(1, 0),
@@ -140,7 +176,8 @@ impl ChunkWorkerPool {
         }
     }
 
-    pub fn shutdown(self) {
+    pub fn shutdown(self)
+    {
         for _ in 0..self.handles.len() {
             self.work_tx.send(None).unwrap();
         }

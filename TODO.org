@@ -7,7 +7,8 @@
 **** DONE Terrain generation
 **** TODO Player collision
 **** TODO Inventory system
-*** TODO Infinite world with not whole world loaded at once
+*** DONE Infinite world with not whole world loaded at once
+*** TODO WASM
 ** BACKLOG
 *** TODO Ambient occlusion on meshes
 *** TODO Chunk streaming / unload distant chunks
